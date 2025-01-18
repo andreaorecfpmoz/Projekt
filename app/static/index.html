@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="hr">
+<head>
+  <meta charset="UTF-8" />
+  <title>Maintenance Log - Demo</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+      background: #f7f7f7;
+      color: #333;
+    }
+    h1 {
+      background: #4c8bf5;
+      color: #fff;
+      padding: 10px;
+      border-radius: 4px;
+    }
+    h2 {
+      margin-top: 30px;
+      color: #4c8bf5;
+    }
+    .section {
+      background: #fff;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      padding: 15px;
+      margin-bottom: 20px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+    label {
+      display: inline-block;
+      width: 120px;
+      margin-right: 5px;
+    }
+    input, select, button {
+      margin-bottom: 5px;
+      padding: 5px;
+    }
+    ul {
+      list-style: none;
+      padding-left: 0;
+    }
+    li {
+      background: #eee;
+      margin: 5px 0;
+      padding: 8px;
+      border-radius: 4px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .entityInfo {
+      flex: 1;
+    }
+    .btnRow button {
+      margin-left: 10px;
+      padding: 5px 8px;
+      border: none;
+      cursor: pointer;
+      border-radius: 4px;
+    }
+    .btnDelete {
+      background: #f25c5c; 
+      color: #fff;
+    }
+    .btnDelete:hover {
+      background: #d9534f;
+    }
+    .btnCreate {
+      background: #5cb85c;
+      color: #fff;
+    }
+    .btnCreate:hover {
+      background: #4cae4c;
+    }
+    .btnRefresh {
+      background: #0275d8;
+      color: #fff;
+    }
+    .btnRefresh:hover {
+      background: #025aa5;
+    }
+  </style>
+</head>
+<body>
+  <h1>Evidencija popravaka i održavanja</h1>
+
+
+  <div class="section">
+    <h2>Radni nalozi</h2>
+    <form id="workOrderForm">
+      <label>Opis zadatka:</label>
+      <input type="text" id="wo_description" required /><br/>
+
+      <label>Status:</label>
+      <select id="wo_status">
+        <option value="Pending">Pending</option>
+        <option value="Completed">Completed</option>
+      </select><br/>
+
+      <label>Težina (severity):</label>
+      <select id="wo_severity">
+        <option value="Low">Low</option>
+        <option value="Medium">Medium</option>
+        <option value="High">High</option>
+      </select><br/>
+
+      <label>Datum kreiranja:</label>
+      <input type="datetime-local" id="wo_created_at" value="2025-01-01T10:00" required /><br/>
+
+      <button type="submit" class="btnCreate">Dodaj</button>
+      <button type="button" id="refreshWorkOrders" class="btnRefresh">Osvježi</button>
+    </form>
+
+    <ul id="workOrderList"></ul>
+  </div>
+
+  
+  <div class="section">
+    <h2>Items</h2>
+    <form id="itemForm">
+      <label>Naziv:</label>
+      <input type="text" id="item_name" required /><br/>
+
+      <label>Opis:</label>
+      <input type="text" id="item_description"/><br/>
+
+      <button type="submit" class="btnCreate">Dodaj</button>
+      <button type="button" id="refreshItems" class="btnRefresh">Osvježi</button>
+    </form>
+
+    <ul id="itemList"></ul>
+  </div>
+
+  <script>
+  
+    const BASE_URL = "http://localhost:5000"; 
+  
+
+    const WORK_ORDERS_URL = BASE_URL + "/work_orders";
+    const ITEMS_URL = BASE_URL + "/items";
+
+   
+    async function fetchWorkOrders() {
+      try {
+        const resp = await fetch(WORK_ORDERS_URL + "/");
+        if (!resp.ok) throw new Error("Greška kod dohvaćanja radnih naloga");
+        const data = await resp.json();
+
+        const woList = document.getElementById("workOrderList");
+        woList.innerHTML = "";
+        data.forEach(wo => {
+          
+          const li = document.createElement("li");
+          const infoDiv = document.createElement("div");
+          infoDiv.className = "entityInfo";
+          infoDiv.textContent = `#${wo.id} | ${wo.task_description}, Status: ${wo.status}, Severity: ${wo.severity}, Kreirano: ${wo.created_at}`;
+          
+          const btnDiv = document.createElement("div");
+          btnDiv.className = "btnRow";
+
+          
+          const delBtn = document.createElement("button");
+          delBtn.textContent = "Obriši";
+          delBtn.className = "btnDelete";
+          delBtn.addEventListener("click", () => deleteWorkOrder(wo.id));
+
+          btnDiv.appendChild(delBtn);
+
+          li.appendChild(infoDiv);
+          li.appendChild(btnDiv);
+          woList.appendChild(li);
+        });
+      } catch (err) {
+        console.error(err);
+      }
+    }
+
+    async function createWorkOrder(e) {
+      e.preventDefault();
+      const descriptionVal = document.getElementById("wo_description").value;
+      const statusVal = document.getElementById("wo_status").value;
+      const severityVal = document.getElementById("wo_severity").value;
+      const createdAtVal = document.getElementById("wo_created_at").value; 
+
+      const body = {
+        task_description: descriptionVal,
+        status: statusVal,
+        severity: severityVal,
+        created_at: createdAtVal
+      };
+
+      try {
+        const resp = await fetch(WORK_ORDERS_URL + "/", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body)
+        });
+        if (!resp.ok) throw new Error("Greška kod kreiranja radnog naloga");
+        
+        fetchWorkOrders();
+        e.target.reset(); 
+      } catch(err) {
+        console.error(err);
+      }
+    }
+
+    async function deleteWorkOrder(id) {
+      try {
+        const resp = await fetch(WORK_ORDERS_URL + "/" + id, {
+          method: "DELETE"
+        });
+        if (!resp.ok) throw new Error("Greška kod brisanja radnog naloga");
+        fetchWorkOrders();
+      } catch(err) {
+        console.error(err);
+      }
+    }
+
+
+    async function fetchItems() {
+      try {
+        const resp = await fetch(ITEMS_URL + "/");
+        if (!resp.ok) throw new Error("Greška kod dohvaćanja itema");
+        const data = await resp.json();
+
+        const itemList = document.getElementById("itemList");
+        itemList.innerHTML = "";
+        data.forEach(it => {
+          const li = document.createElement("li");
+          const infoDiv = document.createElement("div");
+          infoDiv.className = "entityInfo";
+          infoDiv.textContent = `#${it.id} | ${it.name}, Opis: ${it.description}, Kreirano: ${it.created_at}`;
+
+          const btnDiv = document.createElement("div");
+          btnDiv.className = "btnRow";
+
+          const delBtn = document.createElement("button");
+          delBtn.textContent = "Obriši";
+          delBtn.className = "btnDelete";
+          delBtn.addEventListener("click", () => deleteItem(it.id));
+
+          btnDiv.appendChild(delBtn);
+
+          li.appendChild(infoDiv);
+          li.appendChild(btnDiv);
+          itemList.appendChild(li);
+        });
+      } catch (err) {
+        console.error(err);
+      }
+    }
+
+    async function createItem(e) {
+      e.preventDefault();
+      const nameVal = document.getElementById("item_name").value;
+      const descVal = document.getElementById("item_description").value;
+
+      const body = {
+        name: nameVal,
+        description: descVal
+      };
+
+      try {
+        const resp = await fetch(ITEMS_URL + "/", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body)
+        });
+        if (!resp.ok) throw new Error("Greška kod kreiranja itema");
+        
+        fetchItems();
+        e.target.reset();
+      } catch(err) {
+        console.error(err);
+      }
+    }
+
+    async function deleteItem(id) {
+      try {
+        const resp = await fetch(ITEMS_URL + "/" + id, {
+          method: "DELETE"
+        });
+        if (!resp.ok) throw new Error("Greška kod brisanja itema");
+        fetchItems();
+      } catch(err) {
+        console.error(err);
+      }
+    }
+
+    
+    window.addEventListener("DOMContentLoaded", () => {
+      fetchWorkOrders();
+      fetchItems();
+    });
+
+    
+    const woForm = document.getElementById("workOrderForm");
+    woForm.addEventListener("submit", createWorkOrder);
+
+    
+    document.getElementById("refreshWorkOrders").addEventListener("click", fetchWorkOrders);
+
+    
+    const itForm = document.getElementById("itemForm");
+    itForm.addEventListener("submit", createItem);
+
+    
+    document.getElementById("refreshItems").addEventListener("click", fetchItems);
+  </script>
+</body>
+</html>
