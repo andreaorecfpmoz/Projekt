@@ -1,3 +1,4 @@
+#!/bin/bash
 
 
 WAITFORIT_cmdname=${0##*/}
