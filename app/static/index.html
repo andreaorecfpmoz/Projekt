@@ -30,11 +30,11 @@
     }
     label {
       display: inline-block;
-      width: 120px;
+      width: 150px;
       margin-right: 5px;
     }
     input, select, button {
-      margin-bottom: 5px;
+      margin-bottom: 10px;
       padding: 5px;
     }
     ul {
@@ -131,96 +131,95 @@
     <ul id="itemList"></ul>
   </div>
 
+  <div class="section">
+    <h2>Korisnici</h2>
+    <form id="userForm">
+      <label for="user_firstname">Ime:</label>
+      <input type="text" id="user_firstname" required /><br/>
+
+      <label for="user_lastname">Prezime:</label>
+      <input type="text" id="user_lastname" /><br/>
+
+      <button type="submit" class="btnCreate">Dodaj</button>
+      <button type="button" id="refreshUsers" class="btnRefresh">Osvježi</button>
+    </form>
+
+    <ul id="userList"></ul>
+  </div>
+
+  <div class="section">
+    <h2>Alati</h2>
+    <form id="toolForm">
+      <label for="tool_name">Naziv:</label>
+      <input type="text" id="tool_name" required /><br/>
+
+      <label for="tool_description">Opis:</label>
+      <input type="text" id="tool_description" /><br/>
+
+      <button type="submit" class="btnCreate">Dodaj</button>
+      <button type="button" id="refreshTools" class="btnRefresh">Osvježi</button>
+    </form>
+
+    <ul id="toolList"></ul>
+  </div>
+
+  <div class="section">
+    <h2>Strojevi</h2>
+    <form id="machineForm">
+      <label for="machine_name">Naziv:</label>
+      <input type="text" id="machine_name" required /><br/>
+
+      <label for="machine_description">Opis:</label>
+      <input type="text" id="machine_description" /><br/>
+
+      <button type="submit" class="btnCreate">Dodaj</button>
+      <button type="button" id="refreshMachines" class="btnRefresh">Osvježi</button>
+    </form>
+
+    <ul id="machineList"></ul>
+  </div>
+
   <script>
     const BASE_URL = "http://79.76.111.88:5000"; // Zamijenite s localhost ako testirate lokalno
 
-    const WORK_ORDERS_URL = BASE_URL + "/work_orders";
-    const ITEMS_URL = BASE_URL + "/items";
+    const WORK_ORDERS_URL = `${BASE_URL}/work_orders/`;
+    const ITEMS_URL = `${BASE_URL}/items/`;
+    const USERS_URL = `${BASE_URL}/users/`;
+    const TOOLS_URL = `${BASE_URL}/tools/`;
+    const MACHINES_URL = `${BASE_URL}/machines/`;
 
-    async function fetchWorkOrders() {
+    async function fetchData(url, listId, deleteFunc) {
       try {
-        const resp = await fetch(WORK_ORDERS_URL + "/");
-        if (!resp.ok) throw new Error("Greška kod dohvaćanja radnih naloga");
+        const resp = await fetch(url, {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json"
+          }
+        });
+        if (!resp.ok) {
+          const errorText = await resp.text();
+          throw new Error(`Greška ${resp.status}: ${errorText}`);
+        }
         const data = await resp.json();
 
-        const woList = document.getElementById("workOrderList");
-        woList.innerHTML = "";
-        data.forEach(wo => {
-          const li = document.createElement("li");
-          const infoDiv = document.createElement("div");
-          infoDiv.className = "entityInfo";
-          infoDiv.textContent = `#${wo.id} | ${wo.task_description}, Status: ${wo.status}, Severity: ${wo.severity}, Kreirano: ${wo.created_at}`;
-
-          const btnDiv = document.createElement("div");
-          btnDiv.className = "btnRow";
-
-          const delBtn = document.createElement("button");
-          delBtn.textContent = "Obriši";
-          delBtn.className = "btnDelete";
-          delBtn.addEventListener("click", () => deleteWorkOrder(wo.id));
-
-          btnDiv.appendChild(delBtn);
-
-          li.appendChild(infoDiv);
-          li.appendChild(btnDiv);
-          woList.appendChild(li);
-        });
-      } catch (err) {
-        console.error(err);
-      }
-    }
-
-    async function createWorkOrder(e) {
-      e.preventDefault();
-      const descriptionVal = document.getElementById("wo_description").value;
-      const statusVal = document.getElementById("wo_status").value;
-      const severityVal = document.getElementById("wo_severity").value;
-      const createdAtVal = document.getElementById("wo_created_at").value;
-
-      const body = {
-        task_description: descriptionVal,
-        status: statusVal,
-        severity: severityVal,
-        created_at: createdAtVal
-      };
-
-      try {
-        const resp = await fetch(WORK_ORDERS_URL + "/", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(body)
-        });
-        if (!resp.ok) throw new Error("Greška kod kreiranja radnog naloga");
-        fetchWorkOrders();
-        e.target.reset();
-      } catch (err) {
-        console.error(err);
-      }
-    }
-
-    async function deleteWorkOrder(id) {
-      try {
-        const resp = await fetch(WORK_ORDERS_URL + "/" + id, { method: "DELETE" });
-        if (!resp.ok) throw new Error("Greška kod brisanja radnog naloga");
-        fetchWorkOrders();
-      } catch (err) {
-        console.error(err);
-      }
-    }
-
-    async function fetchItems() {
-      try {
-        const resp = await fetch(ITEMS_URL + "/");
-        if (!resp.ok) throw new Error("Greška kod dohvaćanja stavki");
-        const data = await resp.json();
-
-        const itemList = document.getElementById("itemList");
-        itemList.innerHTML = "";
+        const list = document.getElementById(listId);
+        list.innerHTML = "";
         data.forEach(item => {
           const li = document.createElement("li");
           const infoDiv = document.createElement("div");
           infoDiv.className = "entityInfo";
-          infoDiv.textContent = `#${item.id} | ${item.name}, Opis: ${item.description}, Kreirano: ${item.created_at}`;
+
+          // Prilagodba prikaza na temelju vrste entiteta
+          if (item.task_description) {
+            // Radni nalozi
+            infoDiv.textContent = `#${item.id} | ${item.task_description}, Status: ${item.status}, Severity: ${item.severity}`;
+          } else if (item.firstname) {
+            // Korisnici
+            infoDiv.textContent = `#${item.id} | ${item.firstname} ${item.lastname}`;
+          } else {
+            // Items, Alati, Strojevi
+            infoDiv.textContent = `#${item.id} | ${item.name}, ${item.description || ''}`;
+          }
 
           const btnDiv = document.createElement("div");
           btnDiv.className = "btnRow";
@@ -228,62 +227,132 @@
           const delBtn = document.createElement("button");
           delBtn.textContent = "Obriši";
           delBtn.className = "btnDelete";
-          delBtn.addEventListener("click", () => deleteItem(item.id));
+          delBtn.addEventListener("click", () => deleteFunc(item.id));
 
           btnDiv.appendChild(delBtn);
 
           li.appendChild(infoDiv);
           li.appendChild(btnDiv);
-          itemList.appendChild(li);
+          list.appendChild(li);
         });
       } catch (err) {
         console.error(err);
+        alert(`Neuspjelo dohvaćanje podataka: ${err.message}`);
       }
     }
 
-    async function createItem(e) {
-      e.preventDefault();
-      const nameVal = document.getElementById("item_name").value;
-      const descVal = document.getElementById("item_description").value;
-
-      const body = {
-        name: nameVal,
-        description: descVal
-      };
-
+    async function createData(url, body, refreshFunc) {
       try {
-        const resp = await fetch(ITEMS_URL + "/", {
+        const resp = await fetch(url, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(body)
         });
-        if (!resp.ok) throw new Error("Greška kod kreiranja stavke");
-        fetchItems();
-        e.target.reset();
+        if (!resp.ok) {
+          const errorText = await resp.text();
+          throw new Error(`Greška ${resp.status}: ${errorText}`);
+        }
+        refreshFunc();
       } catch (err) {
         console.error(err);
+        alert(`Neuspjelo kreiranje podataka: ${err.message}`);
       }
     }
 
-    async function deleteItem(id) {
+    async function deleteData(url, id, refreshFunc) {
       try {
-        const resp = await fetch(ITEMS_URL + "/" + id, { method: "DELETE" });
-        if (!resp.ok) throw new Error("Greška kod brisanja stavke");
-        fetchItems();
+        const resp = await fetch(`${url}${id}`, { method: "DELETE" });
+        if (!resp.ok) {
+          const errorText = await resp.text();
+          throw new Error(`Greška ${resp.status}: ${errorText}`);
+        }
+        refreshFunc();
       } catch (err) {
         console.error(err);
+        alert(`Neuspjelo brisanje podataka: ${err.message}`);
       }
     }
 
+    // Radni Nalozi
+    document.getElementById("workOrderForm").addEventListener("submit", e => {
+      e.preventDefault();
+      const body = {
+        task_description: document.getElementById("wo_description").value,
+        status: document.getElementById("wo_status").value,
+        severity: document.getElementById("wo_severity").value,
+        created_at: document.getElementById("wo_created_at").value,
+      };
+      createData(WORK_ORDERS_URL, body, fetchWorkOrders);
+    });
+    document.getElementById("refreshWorkOrders").addEventListener("click", fetchWorkOrders);
+    function fetchWorkOrders() {
+      fetchData(WORK_ORDERS_URL, "workOrderList", id => deleteData(WORK_ORDERS_URL, id, fetchWorkOrders));
+    }
+
+    // Items
+    document.getElementById("itemForm").addEventListener("submit", e => {
+      e.preventDefault();
+      const body = {
+        name: document.getElementById("item_name").value,
+        description: document.getElementById("item_description").value,
+      };
+      createData(ITEMS_URL, body, fetchItems);
+    });
+    document.getElementById("refreshItems").addEventListener("click", fetchItems);
+    function fetchItems() {
+      fetchData(ITEMS_URL, "itemList", id => deleteData(ITEMS_URL, id, fetchItems));
+    }
+
+    // Korisnici
+    document.getElementById("userForm").addEventListener("submit", e => {
+      e.preventDefault();
+      const body = {
+        firstname: document.getElementById("user_firstname").value,
+        lastname: document.getElementById("user_lastname").value,
+      };
+      createData(USERS_URL, body, fetchUsers);
+    });
+    document.getElementById("refreshUsers").addEventListener("click", fetchUsers);
+    function fetchUsers() {
+      fetchData(USERS_URL, "userList", id => deleteData(USERS_URL, id, fetchUsers));
+    }
+
+    // Alati
+    document.getElementById("toolForm").addEventListener("submit", e => {
+      e.preventDefault();
+      const body = {
+        name: document.getElementById("tool_name").value,
+        description: document.getElementById("tool_description").value,
+      };
+      createData(TOOLS_URL, body, fetchTools);
+    });
+    document.getElementById("refreshTools").addEventListener("click", fetchTools);
+    function fetchTools() {
+      fetchData(TOOLS_URL, "toolList", id => deleteData(TOOLS_URL, id, fetchTools));
+    }
+
+    // Strojevi
+    document.getElementById("machineForm").addEventListener("submit", e => {
+      e.preventDefault();
+      const body = {
+        name: document.getElementById("machine_name").value,
+        description: document.getElementById("machine_description").value,
+      };
+      createData(MACHINES_URL, body, fetchMachines);
+    });
+    document.getElementById("refreshMachines").addEventListener("click", fetchMachines);
+    function fetchMachines() {
+      fetchData(MACHINES_URL, "machineList", id => deleteData(MACHINES_URL, id, fetchMachines));
+    }
+
+    // Inicijalno dohvaćanje svih podataka kada se stranica učita
     window.addEventListener("DOMContentLoaded", () => {
       fetchWorkOrders();
       fetchItems();
+      fetchUsers();
+      fetchTools();
+      fetchMachines();
     });
-
-    document.getElementById("workOrderForm").addEventListener("submit", createWorkOrder);
-    document.getElementById("refreshWorkOrders").addEventListener("click", fetchWorkOrders);
-    document.getElementById("itemForm").addEventListener("submit", createItem);
-    document.getElementById("refreshItems").addEventListener("click", fetchItems);
   </script>
 </body>
 </html>

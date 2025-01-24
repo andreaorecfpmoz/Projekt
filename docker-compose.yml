@@ -9,6 +9,8 @@ services:
       MYSQL_DATABASE: yourdatabase
       MYSQL_USER: user
       MYSQL_PASSWORD: password
+      ommand:
+          --innodb-buffer-pool-size=128M
     volumes:
       - mysql_data:/var/lib/mysql
     ports:
@@ -18,7 +20,7 @@ services:
     image: redis:7.4
     container_name: my_project-redis
     ports:
-      - "6379:6379"
+      - "6380:6379"
 
   app:
     build:
@@ -31,7 +33,7 @@ services:
     depends_on:
       - db
       - redis
-    entrypoint: ["./wait-for-it.sh", "db:3306", "--", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "5000"]
+    entrypoint: ["./wait-for-it.sh", "db:3306", "--", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "5000", --reload ]
 
 volumes:
   mysql_data: {}

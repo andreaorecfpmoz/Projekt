@@ -24,3 +24,27 @@ class Item(Base):
     name = Column(String(255), index=True)
     description = Column(String(255), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
+
+class User(Base):
+    __tablename__ = "users"
+
+    id = Column(Integer, primary_key=True, index=True)
+    firstname = Column(String(255), index=True)
+    lastname = Column(String(255), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+class Machine(Base):
+    __tablename__ = "machines"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(255), index=True)
+    description = Column(String(255), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+class Tool(Base):
+    __tablename__ = "tools"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(255), index=True)
+    description = Column(String(255), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
